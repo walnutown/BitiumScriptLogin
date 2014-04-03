@@ -68,7 +68,7 @@ public class JSONManager {
 	}
 
 	/*-----------------------------------------------------------------------------------------*/
-	public static ScriptLoginAction[] getScriptLoginStepsFromJSON(JSONObject json) throws JSONException {
+	public static ScriptLoginAction[] getScriptLoginActionsFromJSON(JSONObject json) throws JSONException {
 		JSONArray json_actions = json.getJSONArray("steps");
 		ScriptLoginAction[] actions = new ScriptLoginAction[json_actions.length()];
 		for (int i = 0; i < json_actions.length(); i++) {

@@ -2,6 +2,9 @@ package com.example.bitiumscriptlogin;
 
 import java.util.ArrayList;
 
+/*
+ * Different actions are taken in the process of login using script
+ */
 public class ScriptLoginAction {
 	private String name;
 	private String target;

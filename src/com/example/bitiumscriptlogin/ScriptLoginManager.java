@@ -1,41 +1,55 @@
 package com.example.bitiumscriptlogin;
 
 import java.io.IOException;
-import java.util.Arrays;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import android.annotation.TargetApi;
 import android.os.Build;
 import android.util.Log;
 import android.webkit.WebView;
 
+/*
+ * Manage the actions in the process of login using script
+ */
 @TargetApi(Build.VERSION_CODES.GINGERBREAD)
 public class ScriptLoginManager {
-	private final ScriptLoginAction[] actions;
+	private final JSONArray jsonActions;
 	private WebView webView;
 	private FileManager fileManager;
+	private int actionIndex;
 
 	public ScriptLoginManager() {
-		actions = null;
+		jsonActions = null;
 		webView = null;
 		fileManager = FileManager.getInstance();
+		actionIndex = 0;
 	}
 
-	public ScriptLoginManager(WebView webView, ScriptLoginAction[] actions) {
-		this.actions = Arrays.copyOf(actions, actions.length);
+	public ScriptLoginManager(WebView webView, JSONArray jsonActions) {
+		this.jsonActions = jsonActions;
 		this.webView = webView;
 		fileManager = FileManager.getInstance();
+		actionIndex = 0;
 	}
 
 	/**
 	 * Get the url of target page to be visited
+	 * 
+	 * @throws JSONException
 	 */
-	public String getTargetToVisit() {
-		ScriptLoginAction visitAction = null;
-		for (ScriptLoginAction action : actions) {
-			if (action.getName().equals("visit"))
-				visitAction = action;
+	public String getTargetToVisit() throws JSONException {
+		String url = null;
+		for (int i = 0; i < jsonActions.length(); i++) {
+			JSONObject action = jsonActions.getJSONObject(i);
+			if (action.getString("action").equals("visit")) {
+				url = action.getString("target");
+				actionIndex = i + 1;
+			}
 		}
-		return visitAction.getTarget();
+		return url;
 	}
 
 	/**
@@ -47,43 +61,87 @@ public class ScriptLoginManager {
 	public void loadJavaScript() throws IOException {
 		Log.d("SCRIPT", "DOM ready, load our own JS");
 		StringBuilder js = new StringBuilder();
-		js.append("window.__bitium = new function(){");
-		js.append(loadJavaScriptFiles());
-		js.append("		$ = jQuery.noConflict();");
-		js.append("  	var page = new window.__bitium_Page();");
-		js.append("  	this.run_step = function(step, last_step, callback) {");
-		js.append("     page.last_input = last_step;");
-		js.append("     page.run_step(step, callback);");
-		js.append("  }");
-		js.append("};");
-		js.append("console.log('js_loaded')");
+		js.append("window.__bitium = new function(){\n");
+		js.append("     console.log('start loading javascript files');\n");
+		//js.append(loadJavaScriptFiles());
+		js.append(fileManager.readAssetFile("js/jquery.min.js"));
+		//js.append(fileManager.readAssetFile("js/jquery.simulate.js"));
+//		js.append(fileManager.readAssetFile("js/jquery.simulate.ext.js"));
+//		js.append(fileManager.readAssetFile("js/jquery.simulate.drag-n-drop.js"));
+//		js.append(fileManager.readAssetFile("js/jquery.simulate.key-combo.js"));
+//		js.append(fileManager.readAssetFile("js/jquery.simulate.key-sequence.js"));
+//		js.append(fileManager.readAssetFile("js/bililiteRange.js"));
+		js.append("     console.log('finish loading javascript files');\n");
+		 js.append("		$ = jQuery.noConflict();\n");
+		 js.append("  	var page = new window.__bitium_Page();\n");
+		 js.append("  	this.run_step = function(step, last_step, callback) {\n");
+		 js.append("       page.last_input = last_step;\n");
+		 js.append("       page.run_step(step, callback);\n");
+		 js.append("     }\n");
+		js.append("};\n");
+		js.append("console.log('action:true')\n");
 		executeJavaScript(js.toString());
 	}
-	
-	private void executeJavaScript(String js){
+
+	private void executeJavaScript(String js) {
 		StringBuilder sb = new StringBuilder();
-		sb.append("try{ ");
+		sb.append("try{ \n");
 		sb.append(js);
-		sb.append("}catch(e)");
-		sb.append("{");
-		sb.append("	  console.log(e);");
-		sb.append("}");
+		sb.append("}catch(e)\n");
+		sb.append("{\n");
+		sb.append("	  console.log(e);\n");
+		sb.append("}\n");
 		webView.loadUrl("javascript:" + sb.toString());
 	}
 
 	/**
-	 * Take specific action according to the message
+	 * Take specific action according to the message We need to check whether
+	 * we've login successfully before running each action
+	 * 
+	 * @throws JSONException
 	 */
-	public void takeAction(String msg) {
-		//if (msg.equals("js_loaded"))
-			//checkStatus();
+	public void runAction(String msg) throws JSONException {
+		String previousActionJS = "undefined", actionJS = "";
+		String[] s = msg.split(":");
+		String method = s[0], result = s[1];
+		if (method.equals("action")) {
+			previousActionJS = jsonActions.getJSONObject(jsonActions.length() - 2).toString();
+			actionJS = jsonActions.getJSONObject(jsonActions.length() - 1).toString();
+			method = "check";
+		} else if (method.equals("check")) {
+			if (result.equals("true")) {
+				executeJavaScript("console.log('login_success')");
+				return;
+			} else {
+				if (actionIndex == jsonActions.length() - 1) {
+					// TODO login fail
+				} else {
+					previousActionJS = jsonActions.getJSONObject(actionIndex - 1).toString();
+					actionJS = jsonActions.getJSONObject(actionIndex).toString();
+					method = "action";
+					actionIndex++;
+				}
+			}
+		}
+		StringBuilder js = new StringBuilder();
+		js.append("var step =(" + actionJS + ");\n");
+		js.append("var last_step=(" + previousActionJS + ");\n");
+		js.append("__bitium.run_step(step, last_step, function(result) {\n");
+		js.append("console.log('" + method + ":result');\n");
+		js.append("});\n");
+		executeJavaScript(js.toString());
 	}
 
+	/**
+	 * Load Javascript files that need to be injected into the webview
+	 */
 	private String loadJavaScriptFiles() throws IOException {
 		StringBuilder sb = new StringBuilder();
 		String[] files = getJavaScriptFilesToBeLoaded();
-		for (String file : files)
+		for (String file : files) {
 			sb.append(fileManager.readAssetFile(file));
+			sb.append("console.log('load '" + file + "');");
+		}
 		// TODO: we use local page.js now, it should be replaced with the file
 		// on the server
 		sb.append(fileManager.readAssetFile("js/page.js"));
@@ -92,18 +150,14 @@ public class ScriptLoginManager {
 
 	private String[] getJavaScriptFilesToBeLoaded() {
 		String[] files = new String[7];
-		files[0] = "js/jquery.min";
-		files[1] = "js/jquery.simulate";
-		files[2] = "js/jquery.simulate.ext";
-		files[3] = "js/jquery.simulate.drag-n-drop";
-		files[4] = "js/jquery.simulate.key-combo";
-		files[5] = "js/jquery.simulate.key-sequence";
-		files[6] = "js/bililiteRange";
+		files[0] = "js/jquery.min.js";
+		files[1] = "js/jquery.simulate.js";
+		files[2] = "js/jquery.simulate.ext.js";
+		files[3] = "js/jquery.simulate.drag-n-drop.js";
+		files[4] = "js/jquery.simulate.key-combo.js";
+		files[5] = "js/jquery.simulate.key-sequence.js";
+		files[6] = "js/bililiteRange.js";
 		return files;
-	}
-
-	public void log(String msg) {
-		webView.loadUrl("javascript:console.log('" + msg + "')");
 	}
 
 }

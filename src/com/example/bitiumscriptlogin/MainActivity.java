@@ -2,7 +2,6 @@ package com.example.bitiumscriptlogin;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.http.HttpResponse;
@@ -29,7 +28,8 @@ import android.webkit.WebViewClient;
 public class MainActivity extends Activity {
 
 	private WebView wv;
-	private final static String lucidChartPollingUrl = "http://bitium.192.168.1.59.xip.io/api/v1/2/subscriptions/4/auth?plugin=true&copernicus=false&launch_id=30BF4E12-CBA8-4363-B51A-70C3E0351160&token=xx-WGhLQx_QFFX_E5rpb";
+	//private final static String lucidChartPollingUrl = "http://bitium.192.168.1.59.xip.io/api/v1/2/subscriptions/4/auth?plugin=true&copernicus=false&launch_id=30BF4E12-CBA8-4363-B51A-70C3E0351160&token=xx-WGhLQx_QFFX_E5rpb";
+	private final static String lucidChartPollingUrl = "https://www.bitium.com/api/v1/1/subscriptions/57756/auth?plugin=true&copernicus=true&launch_id=ebabe2c2-9c14-4108-b188-c8d8f299f0e1&token=BWJnpS5LoRxZ9GvShshM";
 	private final static String githubPollingUrl = "http://bitium.192.168.1.59.xip.io/api/v1/2/subscriptions/2/auth?plugin=true&copernicus=false&launch_id=F4A3C95D-1426-4349-B340-06689AFBDD17&token=xx-WGhLQx_QFFX_E5rpb";
 	private ScriptLoginManager scriptLoginManager;
 	private FileManager fileManager;
@@ -50,9 +50,10 @@ public class MainActivity extends Activity {
 		wv.setWebChromeClient(new ScriptLoginWebChromeClient());
 		try {
 			JSONObject json_actions = new HttpGetJsonTask(lucidChartPollingUrl).execute().get();
-			ScriptLoginAction[] scriptLoginActions = JSONManager.getScriptLoginStepsFromJSON(json_actions);
-			Log.d("SCRIPT", Arrays.toString(scriptLoginActions));
-			scriptLoginManager = new ScriptLoginManager(wv, scriptLoginActions);
+			//ScriptLoginAction[] scriptLoginActions = JSONManager.getScriptLoginActionsFromJSON(json_actions);
+			//Log.d("SCRIPT", Arrays.toString(scriptLoginActions));
+			//scriptLoginManager = new ScriptLoginManager(wv, scriptLoginActions);
+			scriptLoginManager = new ScriptLoginManager(wv, json_actions.getJSONArray("steps"));
 			String url = scriptLoginManager.getTargetToVisit();
 			wv.loadUrl(url);
 
@@ -76,54 +77,64 @@ public class MainActivity extends Activity {
 		wv.loadUrl("javascript: " + fileManager.readAssetFile(fileName));
 	}
 
-	private void scriptLogin(WebView webView, String s) {
-		// if this is a log message, we directly return
-		if (s.substring(0, 12).equals("android-log")) {
-			Log.d("SCRIPT", s);
-			return;
-		}
-		// if this is a js statement, we have to handle it
-		if (s.substring(0, 11).equals("android-js")) {
-			Log.d("SCRIPT", s);
-			String[] echos = s.substring(11).split(";");
-			String method = echos[0], result = echos[1];
-			scriptLoginManager.log(method + ";" + result);
-			// if (method.equals("js_complete"))
-			// scriptLoginManager.addJS(result);
-			// else if (method.equals("step_done"))
-			// scriptLoginManager.handleStepDone(result);
-			// else if (method.equals("js_added"))
-			// scriptLoginManager.handlePageReady();
-			// else if (method.equals("success_check"))
-			// scriptLoginManager.handleSuccessCheck(result);
-		}
-	}
+//	private void scriptLogin(WebView webView, String s) {
+//		// if this is a log message, we directly return
+//		if (s.substring(0, 12).equals("android-log")) {
+//			Log.d("SCRIPT", s);
+//			return;
+//		}
+//		// if this is a js statement, we have to handle it
+//		if (s.substring(0, 11).equals("android-js")) {
+//			Log.d("SCRIPT", s);
+//			String[] echos = s.substring(11).split(";");
+//			String method = echos[0], result = echos[1];
+//			scriptLoginManager.log(method + ";" + result);
+//			// if (method.equals("js_complete"))
+//			// scriptLoginManager.addJS(result);
+//			// else if (method.equals("step_done"))
+//			// scriptLoginManager.handleStepDone(result);
+//			// else if (method.equals("js_added"))
+//			// scriptLoginManager.handlePageReady();
+//			// else if (method.equals("success_check"))
+//			// scriptLoginManager.handleSuccessCheck(result);
+//		}
+//	}
 
 	public class ScriptLoginWebViewClient extends WebViewClient {
-
 		@Override
 		public void onPageFinished(WebView view, String url) {
 			try {
 				Log.d("SCRIPT", "onPageFinished()");
-
 				// scriptLoginManager.log("test");
 				scriptLoginManager.loadJavaScript();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-
 		}
 
 	}
 
 	public class ScriptLoginWebChromeClient extends WebChromeClient {
-
+		/**
+		 * This callback is used to communicate with the javascirpt in webview
+		 * 
+		 * @msg holds the result of last action and indicates the next action to
+		 *      be taken, until the login process has completed
+		 */
 		@Override
 		public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
 			String msg = consoleMessage.message();
 			Log.d("Console", msg + " -- lineNumber: " + consoleMessage.lineNumber());
-			if (!msg.equals("login_success"))
-				scriptLoginManager.takeAction(msg);
+			if (msg.equals("login_success"))
+				return true;
+			else if (msg.startsWith("action") || msg.startsWith("check")){
+				try {
+					scriptLoginManager.runAction(msg);
+				} catch (JSONException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
 			return true;
 		}
 
