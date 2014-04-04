@@ -61,37 +61,75 @@ public class ScriptLoginManager {
 	public void loadJavaScript() throws IOException {
 		Log.d("SCRIPT", "DOM ready, load our own JS");
 		StringBuilder js = new StringBuilder();
+		// js.append("window.console= console;\n");
 		js.append("window.__bitium = new function(){\n");
-		js.append("     console.log('start loading javascript files');\n");
-		//js.append(loadJavaScriptFiles());
+		js.append("     	console.log('JS, 1.1');\n");
+		// js.append(loadJavaScriptFiles());
 		js.append(fileManager.readAssetFile("js/jquery.min.js"));
-		//js.append(fileManager.readAssetFile("js/jquery.simulate.js"));
+//		js.append("     console.log('load jquery.min.js');\n");
+//		js.append(fileManager.readAssetFile("js/jquery.simulate.js"));
 //		js.append(fileManager.readAssetFile("js/jquery.simulate.ext.js"));
 //		js.append(fileManager.readAssetFile("js/jquery.simulate.drag-n-drop.js"));
 //		js.append(fileManager.readAssetFile("js/jquery.simulate.key-combo.js"));
-//		js.append(fileManager.readAssetFile("js/jquery.simulate.key-sequence.js"));
-//		js.append(fileManager.readAssetFile("js/bililiteRange.js"));
-		js.append("     console.log('finish loading javascript files');\n");
-		 js.append("		$ = jQuery.noConflict();\n");
-		 js.append("  	var page = new window.__bitium_Page();\n");
-		 js.append("  	this.run_step = function(step, last_step, callback) {\n");
-		 js.append("       page.last_input = last_step;\n");
-		 js.append("       page.run_step(step, callback);\n");
-		 js.append("     }\n");
+		js.append(fileManager.readAssetFile("js/jquery.simulate.key-sequence.js"));
+		js.append(fileManager.readAssetFile("js/bililiteRange.js"));
+		js.append(fileManager.readAssetFile("js/page.js"));
+		js.append("     	console.log('JS, 1.2');\n");
+		js.append("		$ = jQuery.noConflict();\n");
+		js.append("     	console.log('JS, 1.3');\n");
+//		js.append("  	var page = new window.__bitium_Page();\n");
+//		js.append("     	console.log('JS, 1.4');\n");
+		js.append("  	this.run_step = function(step, last_step, callback) {\n");
+		js.append("     	console.log('JS, 1.5');\n");
+		js.append("     page.last_input = last_step;\n");
+		js.append("     	console.log('JS, 1.6');\n");
+		js.append("     page.run_step(step, callback);\n");
+		js.append("     	console.log('JS, 1.7');\n");
+		js.append("     }\n");
 		js.append("};\n");
-		js.append("console.log('action:true')\n");
+		js.append("console.log('action:true');\n");
 		executeJavaScript(js.toString());
+
+	}
+
+	int lineCount = 1;
+
+	private void logByLine(String s) {
+
+		for (String line : s.split("\n")) {
+			Log.d("JS", "line" + lineCount + " " + line);
+			lineCount++;
+		}
+	}
+
+	private void logAll(String s) {
+		int maxSize = 1000;
+		for (int i = 0; i <= s.length() / maxSize; i++) {
+			int start = i * maxSize;
+			int end = (i + 1) * maxSize;
+			end = end > s.length() ? s.length() : end;
+			Log.d("JS", s.substring(start, end));
+		}
 	}
 
 	private void executeJavaScript(String js) {
+
 		StringBuilder sb = new StringBuilder();
 		sb.append("try{ \n");
 		sb.append(js);
-		sb.append("}catch(e)\n");
-		sb.append("{\n");
-		sb.append("	  console.log(e);\n");
+		sb.append("}catch(e){\n");
+		// sb.append("if (console === undefined){\n");
+		//sb.append("	  console.trace();\n");
+		sb.append("	  console.log(e.stack);\n");
+//		 sb.append("	  document.write(e);\n");
 		sb.append("}\n");
+		logByLine(sb.toString());
+//		logAll(sb.toString());
 		webView.loadUrl("javascript:" + sb.toString());
+	}
+	
+	private void executeJavaScript2(String js) {
+		webView.loadUrl("javascript:(" + js+")");
 	}
 
 	/**
@@ -127,7 +165,7 @@ public class ScriptLoginManager {
 		js.append("var step =(" + actionJS + ");\n");
 		js.append("var last_step=(" + previousActionJS + ");\n");
 		js.append("__bitium.run_step(step, last_step, function(result) {\n");
-		js.append("console.log('" + method + ":result');\n");
+		js.append("		console.log('" + method + ":'+ result);\n");
 		js.append("});\n");
 		executeJavaScript(js.toString());
 	}
