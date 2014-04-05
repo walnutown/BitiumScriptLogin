@@ -31,7 +31,8 @@ public class MainActivity extends Activity {
 	// private final static String lucidChartPollingUrl =
 	// "http://bitium.192.168.1.59.xip.io/api/v1/2/subscriptions/4/auth?plugin=true&copernicus=false&launch_id=30BF4E12-CBA8-4363-B51A-70C3E0351160&token=xx-WGhLQx_QFFX_E5rpb";
 	private final static String lucidChartPollingUrl = "https://www.bitium.com/api/v1/1/subscriptions/57756/auth?plugin=true&copernicus=true&launch_id=ebabe2c2-9c14-4108-b188-c8d8f299f0e1&token=BWJnpS5LoRxZ9GvShshM";
-	private final static String githubPollingUrl = "http://bitium.192.168.1.59.xip.io/api/v1/2/subscriptions/2/auth?plugin=true&copernicus=false&launch_id=F4A3C95D-1426-4349-B340-06689AFBDD17&token=xx-WGhLQx_QFFX_E5rpb";
+	//private final static String githubPollingUrl = "http://bitium.192.168.1.45.xip.io/api/v1/2/subscriptions/2/auth?plugin=true&copernicus=false&launch_id=F4A3C95D-1426-4349-B340-06689AFBDD17&token=xx-WGhLQx_QFFX_E5rpb";
+	private final static String githubPollingUrl =  "https://www.bitium.com/api/v1/1/subscriptions/36518/auth?plugin=true&copernicus=true&launch_id=e3c178f8-5912-4a19-9fb6-2bbc3c97c1ef&token=BWJnpS5LoRxZ9GvShshM";
 	private ScriptLoginManager scriptLoginManager;
 	private FileManager fileManager;
 
@@ -50,7 +51,8 @@ public class MainActivity extends Activity {
 		wv.setWebViewClient(new ScriptLoginWebViewClient());
 		wv.setWebChromeClient(new ScriptLoginWebChromeClient());
 		try {
-			JSONObject json_actions = new HttpGetJsonTask(lucidChartPollingUrl).execute().get();
+			//JSONObject json_actions = new HttpGetJsonTask(lucidChartPollingUrl).execute().get();
+			JSONObject json_actions = new HttpGetJsonTask(githubPollingUrl).execute().get();
 			// ScriptLoginAction[] scriptLoginActions =
 			// JSONManager.getScriptLoginActionsFromJSON(json_actions);
 			// Log.d("SCRIPT", Arrays.toString(scriptLoginActions));
@@ -128,9 +130,9 @@ public class MainActivity extends Activity {
 		public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
 			String msg = consoleMessage.message();
 			Log.d("Console", msg + " -- lineNumber: " + consoleMessage.lineNumber());
-			if (msg.equals("login_success"))
+			if (msg.equals("Android:login_success"))
 				return true;
-			else if (msg.startsWith("action") || msg.startsWith("check")) {
+			else if (msg.startsWith("Android:action") || msg.startsWith("Android:check")) {
 				try {
 					scriptLoginManager.runAction(msg);
 				} catch (JSONException e) {
